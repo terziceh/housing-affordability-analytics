@@ -393,10 +393,75 @@ It also improves traceability. If a value in the final mart appears incorrect, t
 
 > **Key takeaway:** establish the analytical environment and layer responsibilities before ingestion so incoming data has a clearly defined destination and transformation path.
 
-### Next Step
+### Step 2 — Get a FRED API Key ✅
 
-**Step 2: Inspect the FRED API and select the source series**
+FRED exposes economic data through a REST API. To make authenticated requests, each user should create their own API key.
 
-With the SQL Server environment prepared, the next step is to understand the FRED API response and select the exact economic series needed for home prices, mortgage rates, housing supply, and household purchasing power.
+#### How to get a FRED API key
 
-No FRED data has been ingested yet.
+1. Create or sign in to a free FRED account.
+2. Open the FRED API key section from the account settings.
+3. Request or generate an API key.
+4. Store the key locally and do **not** commit it to GitHub.
+
+For this project, the key will be stored in a local `.env` file:
+
+```text
+FRED_API_KEY=your_api_key_here
+```
+
+The repository `.gitignore` excludes `.env` files so secrets are not accidentally committed.
+
+> **Security principle:** credentials belong in environment variables or another secret-management mechanism, not directly inside source code.
+
+### Selected V1 FRED Series
+
+The first ingestion will focus on three national housing indicators:
+
+| Business Concept | FRED Series | Frequency |
+| --- | --- | --- |
+| Home Prices | `MSPUS` | Quarterly |
+| Mortgage Rates | `MORTGAGE30US` | Weekly |
+| Housing Supply | `MSACSR` | Monthly |
+
+Household income can be added later once the initial API-to-SQL Server pipeline is working.
+
+The different source frequencies are intentional. They will create a realistic transformation problem later when the data must be aligned to a common analytical grain.
+
+### Next Implementation Step
+
+The next step is to build a small Python ingestion script in VS Code.
+
+The script will:
+
+```text
+Load API key from .env
+        ↓
+Call the FRED REST API
+        ↓
+Receive JSON observations
+        ↓
+Inspect and lightly shape the source data
+        ↓
+Connect to SQL Server
+        ↓
+Insert records into the raw schema
+```
+
+Python is being used for ingestion because it handles REST requests and JSON responses cleanly and can connect directly to SQL Server using libraries such as `pyodbc` or SQLAlchemy.
+
+SQL Server will then take over for the downstream analytics engineering workflow:
+
+```text
+raw
+ ↓
+staging
+ ↓
+transform
+ ↓
+mart
+```
+
+The first Python test will retrieve a single FRED series and print several observations before any data is inserted into SQL Server. This allows the source response and expected grain to be understood before the raw table is designed.
+
+No FRED data has been loaded into SQL Server yet.
