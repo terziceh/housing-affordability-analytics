@@ -313,10 +313,90 @@ Completed:
 - Established the repository and documentation structure
 - Defined the initial data-quality philosophy
 
+## Part 1 — FRED API → SQL Server
+
+### Step 1 — Set Up the SQL Server Environment ✅
+
+Before retrieving data from the FRED API, the SQL Server environment was created first. This establishes where the source data will land and separates the major responsibilities of the analytical pipeline before ingestion begins.
+
+A dedicated database called `HousingAffordability` was created for the project. Four schemas were then created inside the database:
+
+```sql
+CREATE DATABASE HousingAffordability;
+GO
+
+USE HousingAffordability;
+GO
+
+CREATE SCHEMA raw;
+GO
+
+CREATE SCHEMA staging;
+GO
+
+CREATE SCHEMA transform;
+GO
+
+CREATE SCHEMA mart;
+GO
+```
+
+![Housing Affordability database and schema setup](docs/images/DatabaseSetup.png)
+
+#### What is happening here?
+
+`CREATE DATABASE HousingAffordability` creates the main SQL Server database that will contain the project's data objects.
+
+`USE HousingAffordability` changes the active database context so the objects created afterward belong to the housing affordability project rather than another database on the SQL Server instance.
+
+The four `CREATE SCHEMA` statements create logical namespaces inside the database. Instead of placing every table under the default `dbo` schema, tables can be organized according to their role in the pipeline.
+
+The intended flow is:
+
+```text
+raw
+ ↓
+staging
+ ↓
+transform
+ ↓
+mart
+```
+
+- **raw** — landing area for data received from FRED with minimal modification. The priority is source fidelity and traceability.
+- **staging** — standardizes source data, including names, data types, dates, null handling, and other structural cleanup.
+- **transform** — contains reusable analytical and business logic such as time alignment, growth calculations, ratios, and other derived measures.
+- **mart** — publishes stable business-ready data that downstream tools such as Python notebooks or Power BI can consume without repeating source-specific cleaning.
+
+The schemas were then verified in SQL Server Object Explorer:
+
+![Raw, staging, transform, and mart schemas in SQL Server](docs/images/SchemaSetup.png)
+
+This confirms that the database now has the logical structure needed for the source-to-analysis workflow.
+
+#### Why separate the layers with schemas?
+
+The schemas do not physically create the pipeline by themselves. They provide organization and separation of responsibility inside one database.
+
+For example, as the project develops, objects may follow a naming pattern such as:
+
+```text
+raw.fred_observations
+staging.fred_observations
+transform.housing_metrics
+mart.housing_affordability
+```
+
+This makes it clear where an object belongs in the data lifecycle and prevents ingestion, cleaning, business logic, and analytical outputs from being mixed together.
+
+It also improves traceability. If a value in the final mart appears incorrect, the pipeline can be followed backward through transform, staging, and raw to determine whether the issue originated in the source data or in downstream logic.
+
+> **Key takeaway:** establish the analytical environment and layer responsibilities before ingestion so incoming data has a clearly defined destination and transformation path.
+
 ### Next Step
 
-**Part 1: FRED API → SQL Server**
+**Step 2: Inspect the FRED API and select the source series**
 
-The next stage begins by setting up the SQL Server analytical environment and then inspecting the FRED API data that will populate the raw layer.
+With the SQL Server environment prepared, the next step is to understand the FRED API response and select the exact economic series needed for home prices, mortgage rates, housing supply, and household purchasing power.
 
-No ingestion or analytical transformations have been implemented yet.
+No FRED data has been ingested yet.
