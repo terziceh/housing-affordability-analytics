@@ -425,44 +425,107 @@ The first ingestion will focus on four national housing and affordability indica
 | Housing Supply | `MSACSR` | Monthly |
 | Household Purchasing Power | `MEHOINUSA646N` | Annual |
 
-Household income can be added later once the initial API-to-SQL Server pipeline is working.
+All four series are included in the initial ingestion. Their different source frequencies are intentional and will create a realistic transformation problem later when the data must be aligned to a common analytical grain.
 
-The different source frequencies are intentional. They will create a realistic transformation problem later when the data must be aligned to a common analytical grain.
+### Step 3 — Build and Test the FRED Python Ingestion Script ✅
 
-### Next Implementation Step
+A Python ingestion script was created in VS Code to authenticate to FRED, request all four selected series, convert the returned JSON observations into pandas DataFrames, and combine them into one long-format dataset.
 
-The next step is to build a small Python ingestion script in VS Code.
-
-The script will:
+The initial local structure is:
 
 ```text
-Load API key from .env
-        ↓
-Call the FRED REST API
-        ↓
-Receive JSON observations
-        ↓
-Inspect and lightly shape the source data
-        ↓
-Connect to SQL Server
-        ↓
-Insert records into the raw schema
+Ingestion/
+├── .env
+└── fred_ingestion.py
 ```
 
-Python is being used for ingestion because it handles REST requests and JSON responses cleanly and can connect directly to SQL Server using libraries such as `pyodbc` or SQLAlchemy.
+The API key is loaded from the local `.env` file with `python-dotenv`:
 
-SQL Server will then take over for the downstream analytics engineering workflow:
+```python
+load_dotenv()
+
+FRED_API_KEY = os.getenv("FRED_API_KEY")
+```
+
+This keeps the credential outside the source code and prevents it from being committed to GitHub.
+
+The script then defines the selected FRED series:
+
+```python
+SERIES_IDS = {
+    "MSPUS": "home_price",
+    "MORTGAGE30US": "mortgage_rate",
+    "MSACSR": "housing_supply",
+    "MEHOINUSA646N": "household_income",
+}
+```
+
+For each series, Python sends a GET request to the FRED `series/observations` endpoint, checks that the request succeeded, parses the JSON response, and converts the returned observations into a DataFrame.
 
 ```text
-raw
+.env
  ↓
-staging
+FRED API key
  ↓
-transform
+Python requests.get()
  ↓
-mart
+JSON response
+ ↓
+observations
+ ↓
+pandas DataFrame
+ ↓
+add series_id + ingestion_timestamp
+ ↓
+combine all series
 ```
 
-The first Python test will retrieve a single FRED series and print several observations before any data is inserted into SQL Server. This allows the source response and expected grain to be understood before the raw table is designed.
+The four API requests completed successfully.
+
+| Series | Rows Retrieved |
+| --- | ---: |
+| `MSPUS` | 254 |
+| `MORTGAGE30US` | 2,892 |
+| `MSACSR` | 763 |
+| `MEHOINUSA646N` | 41 |
+| **Total** | **3,950** |
+
+The combined DataFrame contains six columns and 3,950 rows.
+
+The raw source fields currently include FRED observation metadata along with the two fields added during ingestion:
+
+- `realtime_start`
+- `realtime_end`
+- `date`
+- `value`
+- `series_id`
+- `ingestion_timestamp`
+
+The data is intentionally still in **long format**. The `series_id` identifies what each `value` represents, so home price, mortgage rate, housing supply, and household income do not need to be separate columns in the raw layer.
+
+A simplified example looks like:
+
+```text
+series_id        date         value
+------------------------------------
+MSPUS            ...          ...
+MORTGAGE30US     ...          ...
+MSACSR           ...          ...
+MEHOINUSA646N    ...          ...
+```
+
+This structure preserves the source data cleanly before downstream reshaping and business logic are introduced.
+
+> **Key takeaway:** the Python ingestion layer is responsible for retrieving and lightly shaping source data, while SQL Server will handle the downstream raw → staging → transform → mart workflow.
+
+### Current Checkpoint
+
+The FRED API connection is working and all four source series have been successfully retrieved into Python.
 
 No FRED data has been loaded into SQL Server yet.
+
+### Next Step
+
+**Step 4: Connect Python to SQL Server and load `raw.fred_observations`**
+
+The next session will create the raw observations table, connect the Python script to the `HousingAffordability` database with `pyodbc`, load the 3,950 observations into the `raw` schema, and validate the row counts and date ranges in SQL Server.
