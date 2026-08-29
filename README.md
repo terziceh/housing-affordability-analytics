@@ -416,7 +416,7 @@ The repository `.gitignore` excludes `.env` files so secrets are not accidentall
 
 ### Selected V1 FRED Series
 
-The first ingestion will focus on three national housing indicators:
+The first ingestion will focus on four national housing and affordability indicators:
 
 | Business Concept | FRED Series | Frequency |
 | --- | --- | --- |
