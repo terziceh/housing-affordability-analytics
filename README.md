@@ -423,6 +423,7 @@ The first ingestion will focus on four national housing and affordability indica
 | Home Prices | `MSPUS` | Quarterly |
 | Mortgage Rates | `MORTGAGE30US` | Weekly |
 | Housing Supply | `MSACSR` | Monthly |
+| Household Purchasing Power | `MEHOINUSA646N` | Annual |
 
 Household income can be added later once the initial API-to-SQL Server pipeline is working.
 
